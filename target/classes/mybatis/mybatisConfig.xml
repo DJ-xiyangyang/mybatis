@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE configuration
+        PUBLIC "-//mybatis.org//DTD Config 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-config.dtd">
+<configuration>
+<!--——————————————————————————————————分割线———————————————————————————————————————————-->
+    <!--properties标签
+    mybatis可以使用properties标签来引入外部properties文件的内容
+    resource:引入类路径下的资源
+    url:引入网络路径或者磁盘路径下的资源
+    -->
+    <!--<properties resource="dbconfig.properties"></properties>-->
+<!--——————————————————————————————————分割线———————————————————————————————————————————-->
+    <!--settings标签包含很多重要的设置项
+    setting标签用来设置每一个设置项 name 和 value
+    mapUnderscoreToCamelCase：开启驼峰命名法，数据库中命名一般是下划线
+    而java中是驼峰命名法，这项设置可以使二者映射。
+    -->
+    <!--settings运行时行为设置-->
+    <settings>
+        <setting name="mapUnderscoreToCamelCase" value="true"/>
+        <setting name="jdbcTypeForNull" value="VARCHAR"/>
+        <!--显式地指定开启懒加载，由于mybatis的版本不同，懒加载的默认情况是不同的-->
+        <setting name="lazyLoadingEnabled" value="true"/>
+        <!--侵入懒加载：怎么理解呢？在本例中，dept是employee对象的懒属性，而department
+        则属于懒加载的对象，当侵入懒加载这项属性，默认为true（开启），懒加载的对象可以被懒
+        加载的属性侵入，即可以随意加载，而设置为false时，则是按需加载，这就是所谓的懒加载，
+        因为单表查询相比关联查询，能够大大提高数据库的性能，单表比多表要快，毋庸置疑-->
+        <setting name="aggressiveLazyLoading" value="false"/>
+
+        <!--显式地开启二级缓存-->
+        <setting name="cacheEnabled" value="true"/>
+    </settings>
+<!--——————————————————————————————————分割线———————————————————————————————————————————-->
+    <!--typeAliases：别名处理器：可以为java类起别名，别名不区分大小写-->
+    <!-- <typeAliases>
+         &lt;!&ndash;为某一个类型起别名，type指定全类名，默认别名就是类名小写employee
+         也可以用alias指定新的别名
+         &ndash;&gt;
+         <typeAlias type="com.atguigu.mybatis02.bean.Employee" alias="emp"/>
+         &lt;!&ndash;package为莫个包下的所有类批量起别名
+          name指定包名：为当前包及其后代包下的每一个类都起一个别名，默认别名还是小写类名
+          如果当前包和后代包中有相同类名的实体类，批量起别名时会产生冲突，这时可以在实体
+          类上添加@Alias注解来单独指定产生重名情况的类的别名&ndash;&gt;
+         <package name="com.atguigu.mybatis02.bean"/>
+
+     </typeAliases>-->
+<!--——————————————————————————————————分割线———————————————————————————————————————————-->
+    <!--typeHandler类型处理器，架起java类型与数据库类型一一映射的桥梁-->
+    <!--JSR-310（Date And Time API）是jdk1.8以后制定的日期时间类型标准，Mybatis根据JSR-310
+    标准也有对应的时间类型处理器：`mybatis-typehandlers-jsr310`-->
+    <!--mybatis3.4以前的版本需要手动注册这些类型处理器，3.4以后的版本会自动注册-->
+
+<!--——————————————————————————————————分割线———————————————————————————————————————————-->
+
+    <!--四大对象：
+                Executor：执行器
+                ParameterHandler：参数处理器
+                ResultSetHandler：结果集处理器
+                StatementHandler：sql语句处理器
+    -->
+
+<!--——————————————————————————————————分割线———————————————————————————————————————————-->
+    
+    <!--
+    <environments default="development">
+        <environment id="development">
+            <transactionManager type="JDBC"></transactionManager>
+            <dataSource type="POOLED">
+                <property name="driver" value="${jdbc.driver}}"/>
+                <property name="url" value="${jdbc.url}"/>
+                <property name="name" value="${jdbc.name}"/>
+                <property name="password" value="${jdbc.password}"/>
+            </dataSource>
+        </environment>
+        <environment id="test">
+            <transactionManager type=""></transactionManager>
+            <dataSource type=""></dataSource>
+        </environment>
+    </environments>
+    type为POOLED代表使用连接池，UNPOOLED代表不使用连接池，JNDI
+-->
+<!--——————————————————————————————————分割线———————————————————————————————————————————-->
+<!--mappers标签：将sql映射注册到全局配置中-->
+<!--<mappers>
+    &lt;!&ndash;mapper标签：注册一个sql映射，
+    resource引入类路径下到的sql映射，
+    url引入网络路径或者磁盘路径下的sql映射
+    class引入接口
+    package标签：批量注册，没啥卵用&ndash;&gt;
+<mapper resource="mybatis/mapper/employeeMapper.xml"/>
+</mappers>-->
+
+<!--——————————————————————————————————分割线———————————————————————————————————————————-->
+
+</configuration>

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.atguigu.mybatis.mapper.EmployeeMapperPlus">
+
+    <!--自定义某个javaBean的封装规则，id是唯一标识，type是对应的实体类-->
+    <resultMap id="MyEmp" type="com.atguigu.mybatis.bean.Employee">
+        <!--id标签，指定主键列的封装规则。column对应表字段的指定列，
+        property对应javabean的属性值-->
+        <id column="id" property="id"/>
+        <!--result标签，映射其他列-->
+        <result column="lastName" property="lastName"/>
+        <!--其他不指定的列会自动封装，但是我们只要写resultMap就把全列的映射都写出来-->
+        <result column="email" property="email"/>
+        <result column="gender" property="gender"/>
+        <result column="d_id" property="dId"/>
+    </resultMap>
+
+    <!--连接查询封装方式一：使用级联属性-->
+    <resultMap id="MyEmpPlus1" type="com.atguigu.mybatis.bean.EmployeePlus">
+        <id column="id" property="id"/>
+        <result column="lastName" property="lastName"/>
+        <result column="email" property="email"/>
+        <result column="gender" property="gender"/>
+        <result column="d_id" property="dId"/>
+        <result column="did" property="dept.id"/>
+        <result column="deptname" property="dept.departmentName"/>
+    </resultMap>
+
+    <!--连接查询封装方式二：使用association标签-->
+    <resultMap id="MyEmpPlus2" type="com.atguigu.mybatis.bean.EmployeePlus">
+        <id column="id" property="id"/>
+        <result column="lastName" property="lastName"/>
+        <result column="email" property="email"/>
+        <result column="gender" property="gender"/>
+        <result column="d_id" property="dId"/>
+
+        <!--介个标签可以指定联合的javaBean对象
+        property="dept"指定哪个属性是联合的对象 javaType指定对象的类型-->
+        <association property="dept" javaType="com.atguigu.mybatis.bean.Department">
+            <id column="did" property="id"/>
+            <result column="deptname" property="departmentName"/>
+        </association>
+    </resultMap>
+
+    <select id="getEmpById" resultMap="MyEmp">
+
+        select * from employee where id=#{id}
+
+    </select>
+
+    <select id="getEmpPlusById" resultMap="MyEmpPlus2">
+        SELECT e.id id,e.`lastName` lastName,e.email email,e.gender gender,
+        e.d_id d_id,d.id did,d.`departmentName` deptname
+        FROM `employee` e
+        LEFT JOIN `department` d
+        ON e.`d_id`=d.`id`
+        WHERE e.id=#{id}
+    </select>
+
+    <!--——————————————————————————————————————————————————————————————————-->
+    <!--使用association进行分步查询
+    1、先按照员工id查出员工信息
+    2、根据查询员工信息中的d_id去部门表查出部门信息
+    3、将查出的部门信息封装回去
+    -->
+
+    <resultMap id="MyEmpByStep" type="com.atguigu.mybatis.bean.EmployeePlus">
+
+        <id column="id" property="id"/>
+        <result column="lastName" property="lastName"/>
+        <result column="email" property="email"/>
+        <result column="gender" property="gender"/>
+        <result column="d_id" property="dId"/>
+        <!--association定义关联对象的封装
+         select表明当前属性是调用select指定的方法查出的结果
+         column指定将查出的哪一列作为参数传入调用的方法-->
+        <association property="dept"
+                     select="com.atguigu.mybatis.mapper.DeptMapper.getDeptById"
+                     column="{id=d_id}">
+        </association>
+    </resultMap>
+
+    <resultMap id="MyEmpDiscriminator" type="com.atguigu.mybatis.bean.EmployeePlus">
+        <id column="id" property="id"/>
+        <result column="lastName" property="lastName"/>
+        <result column="email" property="email"/>
+        <result column="gender" property="gender"/>
+        <result column="d_id" property="dId"/>
+    <!--mybatis可以使用discriminator（鉴别器），鉴别某列的值，并根据不同情况，做出相应的封装
+    以封装employee为例：if查出的是女生，就把相应的部门信息查询出来，if男生，就把lastName的值
+    赋值给email。
+        -->
+        <discriminator javaType="string" column="gender">
+            <case value="0" resultType="com.atguigu.mybatis.bean.EmployeePlus">
+                <association property="dept"
+                             select="com.atguigu.mybatis.mapper.DeptMapper.getDeptById"
+                             column="{id=d_id}">
+                </association>
+            </case>
+            <case value="1" resultType="com.atguigu.mybatis.bean.EmployeePlus">
+                <result column="lastName" property="email"/>
+            </case>
+        </discriminator>
+
+    </resultMap>
+
+<!--上边写了两种resultMap，有鉴别器和无鉴别器，可以修改select标签的resultMap属性来选择不同的版本-->
+    <select id="getEmpByIdStep" resultMap="MyEmpDiscriminator">
+
+        SELECT * from employee where id=#{id}
+
+    </select>
+
+    <!--延迟加载技术：以上方法每次查询员工信息时都会将部门信息一并查询出来
+    而我们希望的是，在需要的时候再去查询部门信息，实现非常简单，在分步查询
+    的基础之上，加上两个setting配置:lazyLoadingEnabled和aggressiveLazyLoading，-->
+    <select id="getEmpByDid" resultType="com.atguigu.mybatis.bean.EmployeePlus">
+        select * from employee where d_id=#{dId}
+    </select>
+
+<!--——————————————————————————————————————————————————————————————————-->
+
+<!--场景二：以上都是关联单个对象，接下来关联对象list：查询部门时将所有的员工查询出来
+接下来的代码在departmentMapperPlus.xml中-->
+
+</mapper>

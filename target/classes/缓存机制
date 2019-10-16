@@ -1,0 +1,56 @@
+为什么使用缓存？
+对于用户量大的网站来说，一些基本不变的数据，比如菜单数据，是存储在数据库的，成千上万的用户每次访问
+网站，如果都去数据库查询这些重复的信息，无疑会对系统造成不必要的压力，而缓存机制可以将这些数据在第
+一次被查询出时，就放入缓存中，此后再想获得这些数据，直接去缓存中拿，不用去访问数据库。
+缓存介绍
+Mybatis系统中默认定义了两级缓存：一级缓存和二级缓存。
+1、默认情况下，只有一级缓存（SqlSession级别的缓存，也称本地缓存）是默认开启的。
+2、二级缓存需手动配置和开启，它是基于namespace级别的缓存（也称全局缓存）。
+3、为了提高扩展性，Mybatis定义了缓存接口cache。我们可以通过实现cache接口来自定义二级缓存。
+4、一级缓存失效的四种情况：Ⅰ：开启了新的SQL session；Ⅱ：同一个SQL session，但是查询条件不同
+Ⅲ：同一个SQL session，两次查询也相同，但是在两次查询期间执行了增删改操作；Ⅳ：两次查询期间执行
+了清除缓存操作（openSession.clearCache）
+
+
+二级缓存（全局缓存）namespace级别的缓存，一个namespace对应一个二级缓存
+工作机制：
+         1、一个会话，查询一条数据，这个数据就会被保存在当前会话的一级缓存中。
+         2、一旦这个会话关闭，一级会话中的缓存会被保存到二级缓存中。新的会话查询数据就会参照
+         二级缓存
+         3、不同的namespace查出的数据会放在自己对应的缓存中（map形式），一般而言，一个namespace
+         对应一个mapper接口，而一个mapper接口对应一张表。
+   使用：
+        1、显式地开启二级缓存，<setting name="cacheEnabled" value="true"/>
+        2、去mapper.xml中配置使用二级缓存。
+        3、由于二级缓存采用序列化&反序列化技术，所以我们的POJO对象需要实现
+测试说明：项目启动以后，访问localhost:18080/testCache3，控制台打印输出0，1，2，3，4
+         druid数据源后台监控sql语句只被执行了一次，说明二级缓存生效了，那么一个会话到底
+         的创建级别是什么？这里边，我又写了两个测试方法localhost:18080/test2Cache3和
+         localhost:18080/test3Cache3，推理比较复杂，直接说结论吧，一次mapper调用就是
+         一次连接！也就是说，一次mappe调用会创建SQL session Factory，并从Factory中拿到
+         一个sql Session。
+         查出的数据都会被默认放在sqlSession的一级缓存中，只有会话关闭，缓存中的数据才会被放在
+         二级缓存中。
+设置说明：全局配置中的<setting name="cacheEnabled" value="true"/>决定二级缓存生效与否，一级
+         缓存不受影响，一直开启。同样的，在select标签中可以设置<select id="getEmpById" resu
+         ltType="com.atguigu.mybatis.bean.Employee" useCache="true">,useCache的设置只会影
+         响当前select语句是否使用二级缓存，一级缓存仍然不受影响。
+         每个增删改标签都会有flushCache属性，该属性的默认值为true，也就是说，每执行一次dml操作
+         都会清空缓存，一级、二级都会被清空。如果select标签的flushCache属性也被设置为true，那
+         缓存就算是废了。
+         sqlSessin.clearCache(),只会清除一级缓存。
+         localCacheScope：setting设置项，本地缓存作用域，默认值为session（sqlSession），可以
+         设置为statement，禁用一级缓存，不过一般没什么人用。
+
+
+
+
+
+
+
+
+
+
+
+
+

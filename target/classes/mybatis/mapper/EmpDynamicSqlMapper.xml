@@ -1,0 +1,184 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.atguigu.mybatis.mapper.EmpDynamicSqlMapper">
+
+    <!--查询员工：要求携带了哪个字段，就以哪个字段作为过滤条件,where1=1可以防止id为空时，
+    拼装sql语句出错，但是mybatis推荐我们用更优雅的方式：where标签,where只会去掉第一个多出来
+    的and或者or-->
+    <select id="getEmpsByConditionIf" resultType="com.atguigu.mybatis.bean.Employee">
+        select *
+        from employee
+        <where>
+        <if test="id!=null">
+        and id=#{id}
+        </if>
+        <if test="lastName!=null and lastName !=''">
+        and lastName like concat('%',concat(#{lastName},'%'))
+        </if>
+        <if test="email!=null and email.trim()!=''">
+        and email=#{email}
+        </if>
+        <if test="gender==0 or gender==1">
+        and gender=#{gender}
+        </if>
+        <if test="dId!=null and dId!=''">
+        and d_id=#{dId}
+        </if>
+        </where>
+    </select>
+
+
+        <!--Trim标签：可以实现更为自由的处理，prefix="where"：加where前缀、suffixOverrides="and"：
+        去掉最后一个and后缀、suffix和prefixOverrides功能类似，本例中会在开头加where，并去掉结尾多
+        余的and-->
+    <select id="getEmployeeByConditionTrim" resultType="com.atguigu.mybatis.bean.Employee">
+
+        select * from employee
+        <trim prefix="where" suffixOverrides="and">
+        <if test="id!=null">
+        id=#{id} and
+        </if>
+        <if test="lastName!=null and lastName !=''">
+        lastName like concat('%',concat(#{lastName},'%')) and
+        </if>
+        <if test="email!=null and email.trim()!=''">
+        email=#{email} and
+        </if>
+        <if test="gender==0 or gender==1">
+        gender=#{gender} and
+        </if>
+        <if test="dId!=null and dId!=''">
+        d_id=#{dId} and
+        </if>
+        </trim>
+    </select>
+
+    <!--choose(when,otherwise):分支选择结构，类似于switch case-->
+    <!--有一个问题：使用了choose标签，当我们的参数被封装成emp对象并被传入时，对象的属性与choose标签的
+    内容匹配时，有两种方式：一种是每次取出对象的一个属性，挨个进行switch循环、另一种是将整个对象传入
+    switch循环，每次选择都匹配整个对象，匹配到了，则终止，通过代码验证，发现选择的是第二种方式，即每次
+    进入一个case通道，传入的都是整个对象，一旦某个属性与当前case通道匹配，则终止循环，所以说，无论对
+    象的属性顺序如何，都不会影响判断顺序，而当我们调整when标签的顺序后，传入同样的参数，响应是不同的
+    -->
+    <select id="getEmployeeByConditionChoose" resultType="com.atguigu.mybatis.bean.Employee">
+        select * from employee
+        <where>
+        <choose>
+        <when test="lastName!=null and lastName !=''">
+        lastName like concat('%',concat(#{lastName},'%'))</when>
+        <when test="id!=null">id=#{id}</when>
+        <when test="email!=null and email.trim()!=''">email=#{email}</when>
+        <otherwise>1=1</otherwise>
+        </choose>
+        </where>
+    </select>
+    <!--where封装查询条件，set封装修改条件-->
+    <update id="updateEmp">
+        UPDATE employee
+        <set>
+        <if test="lastName!=null">lastName = #{lastName},</if>
+        <if test="email!=null and email!=''">email=#{email},</if>
+        <if test="dId!=null">d_id=#{dId},</if>
+        <if test="gender!=null">gender=#{gender}</if>
+        </set>
+        where id=#{id}
+    </update>
+
+
+    <!--动态拼装时在语句的最后有可能会出现多余的逗号，上面是一种解决方式，使用set标签，
+    也可以使用trim标签，-->
+    <update id="updateEmp2">
+        update employee
+        <trim prefix="set" suffixOverrides="," >
+            <if test="lastName!=null">lastName = #{lastName},</if>
+            <if test="email!=null and email!=''">email=#{email},</if>
+            <if test="dId!=null">d_id=#{dId},</if>
+            <if test="gender!=null">gender=#{gender}</if>
+        </trim>
+        where id=#{id}
+    </update>
+
+
+    <!--collection是入参的形参名、item代表集合的每个元素、separator代表元素之间的分隔符，open会在遍历出的所有结果
+    前面加一个开始的字符，close是在结尾加一个字符-->
+    <select id="getEmpByConditionForeach" resultType="com.atguigu.mybatis.bean.Employee">
+        select *
+        from employee
+        where id IN
+        <foreach collection="ids" item="item_id" separator="," open="(" close=")">
+            #{item_id}
+        </foreach>
+    </select>
+    <!--MySql下批量保存，可以采用foreach方法，因为MySql语法支持values(),(),()-->
+    <!--<insert id="addEmps">
+        INSERT INTO`employee`(
+        <include refid="insertColumn"></include>
+        )
+        VALUES
+        <foreach collection="emps" item="emp" separator=",">
+        (#{emp.lastName},#{emp.email},#{emp.gender},#{emp.dId})
+        </foreach>
+    </insert>-->
+    <!--另一种批量保存的方式是循环执行插入一行的sql语句,我们把上一条insert语句注释掉-->
+    <insert id="addEmps">
+        <foreach collection="emps" item="emp" separator=";">
+        INSERT INTO`employee`(
+            <!--引入外部的sql片段,还可以在内部定义property标签，供引用的外部sql片段所使用
+            但是外部sql片段引用时要使用${},而不是#{}-->
+           <include refid="insertColumn">
+               <property name="testColumn" value="abc"/>
+           </include>
+            )
+        VALUES
+        (#{emp.lastName},#{emp.email},#{emp.gender},#{emp.dId})
+        </foreach>
+    </insert>
+
+    <!--oracle数据库不支持values(),(),()这种语法,有三种写法-->
+    <!--<insert id="多个insert放在begin end 里边">
+         begin
+         INSERT INTO`employee`(`lastName`,`email`,`gender`,`d_id`)
+         VALUES
+         (#{emp.lastName},#{emp.email},#{emp.gender},#{emp.dId});
+         INSERT INTO`employee`(`lastName`,`email`,`gender`,`d_id`)
+         VALUES
+         (#{emp.lastName},#{emp.email},#{emp.gender},#{emp.dId});
+         end
+    </insert>
+    <insert id="利用中间表">
+         不想写了，暂时用不到，具体代码参考mybatis教程p46和p47
+    </insert>-->
+
+    <!--不止传过来的参数可以被取值，判断，mybatis还有两个内置参数：
+    _parameter和_databaseId
+    _parameter:代表整个参数，当我们传递单个参数时，就代表这个参数，多个参数时，代表
+    被封装成的map
+    _databaseId:如果配置了databaseIdProvider标签，_databaseId就代表当前数据库的别名-->
+    <!--bind标签：可以将OGNL的值绑定到一个变量中，方便后面的使用,在本案例中，使用bind标签拼装lastName-->
+    <select id="getEmpsTestInnerParameter" resultType="com.atguigu.mybatis.bean.Employee">
+        <bind name="_lastName" value="'_'+lastName+'%'"/>
+        <if test="_databaseId=='mysql'">
+            select * from employee_mysql
+            <if test="_parameter!=null">
+                <where>
+                    <if test="_parameter.lastName!=null">
+                        and lastName like concat(concat('%',#{_parameter.lastName}),'%')
+                        or lastName like #{_lastName}
+                    </if>
+                </where>
+            </if>
+        </if>
+        <if test="_databaseId=='oracle'">
+            select * from employee_oracle
+        </if>
+    </select>
+
+
+    <!--sql标签：抽取可重用的sql片段-->
+    <sql id="insertColumn">
+        `lastName`,`email`,`gender`,`d_id`,${testColumn}
+    </sql>
+
+</mapper>

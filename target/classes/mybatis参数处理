@@ -1,0 +1,99 @@
+1.单个参数，mybatis不会做特殊处理
+  #{参数名}，取出参数值，也就是说方法入参是id，xml取参的时候名字可以随便起，比如叫inmbd，哈哈哈
+2.多个参数：mybatis会做特殊处理
+  出现异常，异常复现的controller方法为：/empByIdAndName1
+  异常描述： "exception": "org.mybatis.spring.MyBatisSystemException",
+              "message": "nested exception is org.apache.ibatis.binding.
+                          BindingException: Parameter 'id' not found.
+                          Available parameters are [arg1, arg0, param1, param2]",
+
+  特殊处理：多个参数会被封装成一个map，#{}就是从map中获取指定key的值
+           key：param1、param2、paramN或者参数的索引 0、1、 2....
+           value:我们实际传入的值
+           而关于参数顺序的问题，经测试，总结如下：假设我们要传入两个参数id，lastName，采用post方式
+           这一步对于顺序是没有要求的，发送请求到达controller层，这个时候，controller方法的入参顺序
+           也没有要求，封装map这一步骤是发生在mapper接口调用时的，也就是说，mapper接口的形参顺序，才
+           是map的key值顺序。所以如果我们mapper定义接口时如果将id和lastName这两个参数顺序调换，那么
+           在相应的xml文件中，#{}取参的顺序应该是param2、param1。复现为：/empByIdAndName2
+
+3.命名参数：可以看到多个参数时如果采用param1...这种形式来取参数，不够见名知义。
+           命名参数可以明确指定封装参数时map的key值
+           具体操作为：在mapper接口定义时采用@param("id")注解指定封装成的map的key
+           复现为：/empByIdAndName3
+
+4.POJO：如果这个参数是我们业务逻辑的数据模型，我们就可以直接传入pojo
+        #{参数值}取出传入的pojo属性值
+
+5.Map：如果没有对应的pojo，我们可以传入map，#{key}取出map中的属性值
+
+6.如果多个参数不是pojo，但是经常用到，推荐来编写一个TO（Transfer Object）数据传输对象。
+
+=============================THINK======================================
+public Employee getEmp(Integer id,@Param("e") Employee emp)
+
+取值：id====>#{param1}  lastName====>#{e.lastName}
+
+#特别注意，如果是collection（List、Set）或者是数组类型，也会特殊处理，也就是把传入的list或者数组封装
+在map中，特殊处理后的key值组成了一个数组，由特殊的名字，Collection（collection）、List（list）、
+Array（array）
+public Employee getEmp(List<Integer> ids)
+
+取集合中的第一个值：id====>#{list[0]}
+=========================结合源码，mybatis怎么处理参数=================================
+这段耗费的时间与精力对我现在而言，性价比不高，先懵懵懂懂地过了一遍，就这样吧
+=========================参数值的获取=================================================
+#{}可以获取map中的值或者pojo对象中属性的值
+${}也可以获取map中的值或者pojo对象中属性的值
+那么，二者有什么区别？
+xml语句：select * FROM employee where id=${id} and lastName=#{lastName}
+运行时生成的sql语句：select * FROM employee where id=2 and lastName=?
+#{}是以预编译的形式，将参数设置到sql语句中，PreparedStatement，防止sql注入
+${}取出的值直接拼装在sql语句中
+如果我们有时候不得不用${},那么一定要手工地做好过滤工作。
+在银行的系统中，安全级别更高，直接采用存储过程。
+
+在原生jdbc不支持占位符的地方，就可以使用${}进行取值
+比如：分表，排序等不支持占位符预编译的操作
+1、按年份来分表拆分：select * from ${year}_salary where .......
+2、根据传入的字段进行排序：select * from employee order by ${f_name} desc
+
+#{}更丰富的用法：
+1、制定参数的一些规则
+   javaType、jdbcType、mode（存储过程）、numericScale、resultMap、typeHandlers、jdbcTypeName、
+   experssion（暂不支持的功能）
+
+   jdbcType在某种特定条件下被设置，
+   在我们数据为null时，有些数据库可能不能识别mybatis对null的默认处理。比如oracle（）
+   jdbcTypeOther 无效的类型，因为mybatis对所有的null值映射的都是jdbc的OTHER类型，具体映射
+   参考枚举类jdbcType，而oracle是无法识别OTHER类型的
+   由于全局配置中，jdbcTypeForNull=OTHER，oracle不支持，有两种办法：
+   ①lastName=#{lastName,jdbcType=null}，在取值的时候指定jdbcType对null值的映射
+   ②jdbcTypeForNull=null，修改配置，从全局指定null值映射为null，而不是other，也可以修改为varchar
+
+   将全局配置修改以后，我这里通过setting标签设置成了varchar，注意，无论是哪种办法，都必须大写，比如
+   null会在程序启动时报错，修改成NULL以后就不会了
+   VARCHAR会产生这种效果，我插入传参时，gender和email都为null，但是操作数据库成功以后，返回的json是
+   这种：{
+          "id": 10,
+          "lastName": "闫肃肃",
+          "email": "",
+          "gender": null,
+          "dId": 3
+      }
+    可以看到，email成功处理成了空字符串，但是gender依然是null，这是因为数据库里边gender是int型，类型
+    不兼容导致，结合现在的项目，理解了为什么几乎所有的字段，类型全是varchar。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
